@@ -153,7 +153,7 @@ func OpenConfigInEditor(editorOverride string) error {
 			Model:        "openrouter/auto",
 			CustomPrompt: "Solve the problem shown in this screenshot. Output ONLY clean, working code without explanations or markdown formatting.",
 			MaxTokens:    2048,
-			RelayURL:     "wss://ctrlv.onrender.com/ws",
+			RelayURL:     "wss://ctrlv-882946927334.europe-west1.run.app/ws",
 			Editor:       "",
 		}
 		_ = SaveAppConfig(defaultCfg)

@@ -282,7 +282,7 @@
           id="relayInput"
           type="text"
           bind:value={currentRelayUrl}
-          placeholder="wss://ctrlv.onrender.com/ws"
+          placeholder="wss://ctrlv-882946927334.europe-west1.run.app/ws"
           class="w-full px-4 py-3 bg-[var(--bg-input)] border border-[var(--card-border)] rounded-xl text-xs sm:text-sm font-mono text-[var(--text-main)] outline-none focus:border-[var(--accent-primary)]"
         />
         <div class="flex items-center justify-between flex-wrap gap-2 pt-1">
