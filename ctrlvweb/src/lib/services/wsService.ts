@@ -7,7 +7,7 @@ import {
   showErrorModal
 } from '../stores/wsStore';
 import { solveImageWithAI } from './aiService';
-import { copyImageToClipboard } from './clipboardService';
+import { triggerAutoCopy } from './clipboardService';
 import type { WSIncomingMessage } from '../types/ws';
 
 let socket: WebSocket | null = null;
@@ -199,11 +199,7 @@ function handleWSMessage(msg: WSIncomingMessage) {
       // Auto-copy image to system clipboard if enabled AND not already copied
       if (state.autoCopyImage && !copiedScreenshots.has(b64)) {
         copiedScreenshots.add(b64);
-        copyImageToClipboard(b64).then((success) => {
-          if (success && typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('ctrlv_image_auto_copied'));
-          }
-        });
+        triggerAutoCopy(b64);
       }
 
       // Auto-solve with AI if enabled AND this new screenshot has not already been solved

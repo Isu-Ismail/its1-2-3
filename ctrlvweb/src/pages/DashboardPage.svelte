@@ -16,7 +16,12 @@
     triggerImageDownload,
   } from "../lib/services/wsService";
   import { solveImageWithAI } from "../lib/services/aiService";
-  import { copyImageToClipboard } from "../lib/services/clipboardService";
+import {
+    copyImageToClipboard,
+    pendingClipboardImage,
+    copyPendingImage,
+    dismissPendingImage,
+  } from "../lib/services/clipboardService";
 
   $: screenshot = $wsStore.cachedScreenshot;
   $: pcText = $wsStore.cachedPCText;
@@ -70,8 +75,16 @@
     }
   }
 
-  function toggleAutoCopyImage() {
-    setAutoCopyImage(!autoCopyImage);
+  async function toggleAutoCopyImage() {
+    const nextState = !autoCopyImage;
+    setAutoCopyImage(nextState);
+    if (nextState && screenshot) {
+      const ok = await copyImageToClipboard(screenshot);
+      if (ok) {
+        copiedImageToast = true;
+        setTimeout(() => (copiedImageToast = false), 1800);
+      }
+    }
   }
 
   // Send limit and locking state
@@ -272,6 +285,10 @@
     }
   }
 
+  async function handleCopyPending() {
+    await copyPendingImage();
+  }
+
   function openImageModal(imgSrc: string) {
     modalImageSrc = imgSrc;
     isImageModalOpen = true;
@@ -279,6 +296,34 @@
 </script>
 
 <canvas bind:this={canvasElement} class="hidden"></canvas>
+
+<!-- Pending Clipboard Action Banner (Shown when browser blocks background copy due to lack of user activation) -->
+{#if $pendingClipboardImage}
+  <div
+    class="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-50 max-w-[95vw] px-3.5 sm:px-5 py-2.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white rounded-2xl shadow-2xl border border-indigo-400/50 flex items-center gap-2.5 sm:gap-3 text-xs sm:text-sm font-semibold backdrop-blur-md animate-bounce"
+  >
+    <div class="flex items-center gap-2 shrink-0">
+      <i class="fa-solid fa-camera text-yellow-300 text-base"></i>
+      <span class="hidden sm:inline">New screenshot received!</span>
+      <span class="sm:hidden">Screenshot received!</span>
+    </div>
+    <button
+      on:click|stopPropagation={handleCopyPending}
+      class="px-3 py-1.5 bg-white text-indigo-700 font-bold rounded-xl shadow hover:bg-slate-100 active:scale-95 transition-all text-xs cursor-pointer flex items-center gap-1.5 shrink-0"
+    >
+      <i class="fa-solid fa-copy text-indigo-600"></i>
+      <span>Copy to Clipboard</span>
+    </button>
+    <button
+      on:click|stopPropagation={dismissPendingImage}
+      class="text-white/70 hover:text-white transition-colors cursor-pointer p-1 shrink-0"
+      title="Dismiss"
+      aria-label="Dismiss notification"
+    >
+      <i class="fa-solid fa-xmark text-sm"></i>
+    </button>
+  </div>
+{/if}
 
 {#if autoCopiedToast}
   <div
