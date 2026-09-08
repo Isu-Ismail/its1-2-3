@@ -5,7 +5,6 @@
   import DashboardPage from './pages/DashboardPage.svelte';
   import DownloadPage from './pages/DownloadPage.svelte';
   import ConfigPage from './pages/ConfigPage.svelte';
-  import HistoryPage from './pages/HistoryPage.svelte';
   import { activeTabStore } from './lib/stores/viewStore';
 </script>
 
@@ -19,8 +18,6 @@
       <DownloadPage />
     {:else if $activeTabStore === 'config'}
       <ConfigPage />
-    {:else if $activeTabStore === 'history'}
-      <HistoryPage />
     {/if}
   </main>
 

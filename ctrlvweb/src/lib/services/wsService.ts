@@ -6,8 +6,8 @@ import {
   setWebText,
   showErrorModal
 } from '../stores/wsStore';
-import { historyStore } from '../stores/historyStore';
 import { solveImageWithAI } from './aiService';
+import { copyImageToClipboard } from './clipboardService';
 import type { WSIncomingMessage } from '../types/ws';
 
 let socket: WebSocket | null = null;
@@ -17,6 +17,9 @@ const solvedItems = new Set<string>();
 
 // Track downloaded items to prevent duplicate auto-downloads on reconnect/reload
 const downloadedScreenshots = new Set<string>();
+
+// Track copied items to prevent duplicate auto-copy on reconnect/reload
+const copiedScreenshots = new Set<string>();
 
 export function markAsSolved(content: string) {
   if (content) {
@@ -59,6 +62,7 @@ export function connectWebSocket() {
   if (currentState.cachedScreenshot) {
     solvedItems.add(currentState.cachedScreenshot);
     downloadedScreenshots.add(currentState.cachedScreenshot);
+    copiedScreenshots.add(currentState.cachedScreenshot);
   }
   if (currentState.cachedPCText) {
     solvedItems.add(currentState.cachedPCText);
@@ -126,9 +130,6 @@ export function sendTextToPC(text: string) {
   const state = get(wsStore);
   const cleanText = text.trim();
 
-  // Save to history list with source='web_exe' (Web -> PC text)
-  historyStore.addItem(cleanText, 'web_exe');
-
   if (!socket || socket.readyState !== WebSocket.OPEN) {
     showErrorModal('Connection Error', 'WebSocket is not connected. Please click Connect to join a room first.');
     return;
@@ -195,6 +196,16 @@ function handleWSMessage(msg: WSIncomingMessage) {
         triggerImageDownload(b64, `ctrlv_screenshot_${state.roomId}_${Date.now()}.jpg`);
       }
 
+      // Auto-copy image to system clipboard if enabled AND not already copied
+      if (state.autoCopyImage && !copiedScreenshots.has(b64)) {
+        copiedScreenshots.add(b64);
+        copyImageToClipboard(b64).then((success) => {
+          if (success && typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('ctrlv_image_auto_copied'));
+          }
+        });
+      }
+
       // Auto-solve with AI if enabled AND this new screenshot has not already been solved
       if (state.autoSolve && !solvedItems.has(b64)) {
         solvedItems.add(b64);
@@ -207,7 +218,6 @@ function handleWSMessage(msg: WSIncomingMessage) {
     const incomingText = msg.content || msg.text;
     if (incomingText) {
       setCachedPCText(incomingText, state.roomId);
-      historyStore.addItem(incomingText, 'exe_web');
 
       // Auto-solve with AI if enabled AND this text has not already been solved
       if (state.autoSolve && !solvedItems.has(incomingText)) {

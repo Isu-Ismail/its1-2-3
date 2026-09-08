@@ -70,26 +70,26 @@
   <div class="max-w-[1400px] mx-auto flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
 
     <!-- Top Row on Mobile / Left Group on Desktop -->
-    <div class="flex items-center justify-between md:justify-start gap-2 sm:gap-4 w-full md:w-auto">
-      <div class="flex items-center gap-2.5">
-        <button on:click={() => setActiveTab('dashboard')} class="flex items-center gap-2 sm:gap-3 group border-none bg-transparent cursor-pointer p-0 text-left">
+    <div class="flex items-center justify-between md:justify-start gap-1.5 sm:gap-4 w-full md:w-auto">
+      <div class="flex items-center gap-1.5 sm:gap-2.5">
+        <button on:click={() => setActiveTab('dashboard')} class="flex items-center gap-1.5 sm:gap-3 group border-none bg-transparent cursor-pointer p-0 text-left">
           <!-- Vibrant Indigo Blue Brand Icon with White Logo SVG -->
-          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-700 border border-indigo-500/40 flex items-center justify-center text-white group-hover:scale-105 transition-transform shadow-md">
-            <svg class="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-700 border border-indigo-500/40 flex items-center justify-center text-white group-hover:scale-105 transition-transform shadow-md shrink-0">
+            <svg class="w-4 h-4 sm:w-6 sm:h-6" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M8 2C7.44772 2 7 2.44772 7 3C7 3.55228 7.44772 4 8 4H10C10.5523 4 11 3.55228 11 3C11 2.44772 10.5523 2 10 2H8Z" fill="#ffffff"/>
               <path d="M3 5C3 3.89543 3.89543 3 5 3C5 4.65685 6.34315 6 8 6H10C11.6569 6 13 4.65685 13 3C14.1046 3 15 3.89543 15 5V11H10.4142L11.7071 9.70711C12.0976 9.31658 12.0976 8.68342 11.7071 8.29289C11.3166 7.90237 10.6834 7.90237 10.2929 8.29289L7.29289 11.2929C6.90237 11.6834 6.90237 12.3166 7.29289 12.7071L10.2929 15.7071C10.6834 16.0976 11.3166 16.0976 11.7071 15.7071C12.0976 15.3166 12.0976 14.6834 11.7071 14.2929L10.4142 13H15V16C15 17.1046 14.1046 18 13 18H5C3.89543 18 3 17.1046 3 16V5Z" fill="#ffffff"/>
               <path d="M15 11H17C17.5523 11 18 11.4477 18 12C18 12.5523 17.5523 13 17 13H15V11Z" fill="#ffffff"/>
             </svg>
           </div>
           <div class="flex flex-col leading-tight">
-            <span class="font-black text-base sm:text-lg tracking-tight text-[var(--text-main)]">ctrlv</span>
+            <span class="font-black text-sm sm:text-lg tracking-tight text-[var(--text-main)]">ctrlv</span>
             <span class="text-[10px] sm:text-xs font-extrabold text-[var(--text-muted)] opacity-85 hidden sm:inline">v1.0.0</span>
           </div>
         </button>
 
         <!-- Connection Status Badge -->
         <div
-          class={`inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-xs font-bold border transition-all ${
+          class={`inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold border transition-all ${
             isConnected
               ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
               : isConnecting
@@ -111,13 +111,13 @@
 
         <!-- Client Counts Badge -->
         {#if isConnected}
-          <div class="inline-flex items-center gap-2 sm:gap-3.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--card-border)] text-xs text-[var(--text-muted)]">
+          <div class="inline-flex items-center gap-1.5 sm:gap-3.5 px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--card-border)] text-[11px] sm:text-xs text-[var(--text-muted)]">
             <span title="Web Browser Clients Connected" class="inline-flex items-center gap-1">
-              <i class="fa-solid fa-globe text-cyan-400"></i>
+              <i class="fa-solid fa-globe text-cyan-400 text-[10px] sm:text-xs"></i>
               <span class="font-extrabold text-[var(--text-main)]">{browserCount}</span>
             </span>
             <span title="PC CLI Clients Connected" class="inline-flex items-center gap-1">
-              <i class="fa-solid fa-laptop text-[var(--accent-primary)]"></i>
+              <i class="fa-solid fa-laptop text-[var(--accent-primary)] text-[10px] sm:text-xs"></i>
               <span class="font-extrabold text-[var(--text-main)]">{pcCount}</span>
             </span>
           </div>
@@ -127,7 +127,7 @@
       <!-- Theme Switcher Button (Mobile view) -->
       <button
         on:click={toggleTheme}
-        class="w-10 h-10 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--card-border)] text-[var(--text-muted)] hover:text-[var(--accent-primary)] hover:border-[var(--accent-primary)]/40 hover:bg-[var(--accent-primary)]/10 flex items-center justify-center transition-colors cursor-pointer shrink-0 md:hidden"
+        class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--card-border)] text-[var(--text-muted)] hover:text-[var(--accent-primary)] hover:border-[var(--accent-primary)]/40 hover:bg-[var(--accent-primary)]/10 flex items-center justify-center transition-colors cursor-pointer shrink-0 md:hidden"
         title="Toggle Dark/Light Theme"
       >
         {#if $themeStore === 'dark'}
@@ -201,21 +201,7 @@
           <span class="hidden sm:inline">Sync</span>
         </button>
 
-        <!-- 2. History -->
-        <button
-          on:click={() => setActiveTab('history')}
-          class={`flex-1 md:flex-none h-9 px-3.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-            $activeTabStore === 'history'
-              ? 'bg-[var(--accent-primary)] text-white shadow-sm'
-              : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--card-hover)]'
-          }`}
-          title="Room History"
-        >
-          <i class="fa-solid fa-clock-rotate-left text-sm"></i>
-          <span class="hidden sm:inline">History</span>
-        </button>
-
-        <!-- 3. Config -->
+        <!-- 2. Config -->
         <button
           on:click={() => setActiveTab('config')}
           class={`flex-1 md:flex-none h-9 px-3.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
@@ -229,7 +215,7 @@
           <span class="hidden sm:inline">Config</span>
         </button>
 
-        <!-- 4. CLI / Download -->
+        <!-- 3. CLI / Download -->
         <button
           on:click={() => setActiveTab('download')}
           class={`flex-1 md:flex-none h-9 px-3.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${

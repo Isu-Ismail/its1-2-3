@@ -288,7 +288,7 @@
         <div class="flex items-center justify-between flex-wrap gap-2 pt-1">
           <span class="text-xs text-[var(--text-muted)]">
             Default: <code class="text-cyan-400"
-              >wss://ctrlv.onrender.com/ws</code
+              >wss://ctrlv-882946927334.europe-west1.run.app/ws</code
             > (Change only if self-hosting your own relay server)
           </span>
           <a

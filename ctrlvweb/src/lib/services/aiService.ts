@@ -4,8 +4,6 @@ import { wsStore, setWebText, showErrorModal } from '../stores/wsStore';
 import { sendTextToPC, markAsSolved } from './wsService';
 import type { AIProvider } from '../types/ai';
 
-import { historyStore } from '../stores/historyStore';
-
 let isSolving = false;
 
 function resolveAIProvider(provider: AIProvider, apiKey: string): AIProvider {
@@ -208,7 +206,6 @@ export async function solveImageWithAI(b64ImageData?: string | null, textPrompt?
 
     if (generatedText) {
       setWebText(generatedText, wsState.roomId);
-      historyStore.addItem(generatedText, 'web_exe', imageToSolve || undefined);
       if (wsState.autoPush) {
         sendTextToPC(generatedText);
         aiSolverStatusStore.set({ state: 'success', message: 'Solved & Pushed to PC!' });

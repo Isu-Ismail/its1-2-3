@@ -1,5 +1,4 @@
 import { writable } from 'svelte/store';
-import { historyStore } from './historyStore';
 
 export interface WSState {
   roomId: string;
@@ -12,6 +11,7 @@ export interface WSState {
   cachedPCText: string;
   webText: string;
   autoDownload: boolean;
+  autoCopyImage: boolean;
   autoSolve: boolean;
   autoPush: boolean;
   errorModal: {
@@ -34,6 +34,11 @@ const getStoredRelayUrl = (): string => {
 const getStoredAutoDownload = (): boolean => {
   if (typeof window === 'undefined') return false;
   return localStorage.getItem('ctrlv_auto_download') === 'true';
+};
+
+const getStoredAutoCopyImage = (): boolean => {
+  if (typeof window === 'undefined') return true;
+  return localStorage.getItem('ctrlv_auto_copy_image') !== 'false';
 };
 
 const getStoredAutoSolve = (): boolean => {
@@ -74,6 +79,7 @@ export const wsStore = writable<WSState>({
   cachedPCText: getInitialPCText(initialRoomId),
   webText: getInitialWebText(initialRoomId),
   autoDownload: getStoredAutoDownload(),
+  autoCopyImage: getStoredAutoCopyImage(),
   autoSolve: getStoredAutoSolve(),
   autoPush: getStoredAutoPush(),
   errorModal: {
@@ -98,7 +104,6 @@ export function setRoomId(newRoomId: string) {
       webText: getInitialWebText(cleanId)
     };
   });
-  historyStore.setRoom(cleanId);
 }
 
 export function setRelayUrl(newUrl: string) {
@@ -118,6 +123,15 @@ export function setAutoDownload(enabled: boolean) {
       localStorage.setItem('ctrlv_auto_download', enabled ? 'true' : 'false');
     }
     return { ...s, autoDownload: enabled };
+  });
+}
+
+export function setAutoCopyImage(enabled: boolean) {
+  wsStore.update((s) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ctrlv_auto_copy_image', enabled ? 'true' : 'false');
+    }
+    return { ...s, autoCopyImage: enabled };
   });
 }
 

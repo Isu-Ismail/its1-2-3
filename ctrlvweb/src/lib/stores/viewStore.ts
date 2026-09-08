@@ -1,10 +1,11 @@
 import { writable } from 'svelte/store';
 
-export type ActiveTab = 'dashboard' | 'download' | 'config' | 'history';
+export type ActiveTab = 'dashboard' | 'download' | 'config';
 
 const getInitialTab = (): ActiveTab => {
   if (typeof window === 'undefined') return 'dashboard';
   const saved = sessionStorage.getItem('ctrlv_active_tab') as ActiveTab;
+  if (saved === 'history' as any) return 'dashboard';
   return saved || 'dashboard';
 };
 
