@@ -18,6 +18,7 @@ type AppConfig struct {
 	MaxTokens    int    `json:"max_tokens,omitempty"`
 	RelayURL     string `json:"relay_url"`
 	Editor       string `json:"editor,omitempty"`
+	LEDChoice    string `json:"led_choice,omitempty"` // "caps_lock" (default) or "num_lock"
 }
 
 func GetConfigPath() string {
@@ -41,6 +42,7 @@ func EnsureConfigExists() (string, *AppConfig, error) {
 			MaxTokens:    2048,
 			RelayURL:     "wss://ctrlv.onrender.com/ws",
 			Editor:       "",
+			LEDChoice:    "caps_lock",
 		}
 		if err := SaveAppConfig(defaultCfg); err != nil {
 			return configPath, defaultCfg, fmt.Errorf("failed to create default config at %s: %w", configPath, err)
@@ -79,6 +81,9 @@ func LoadAppConfig() (*AppConfig, error) {
 	if cfg.MaxTokens <= 0 {
 		cfg.MaxTokens = 2048
 	}
+	if strings.TrimSpace(cfg.LEDChoice) == "" {
+		cfg.LEDChoice = "caps_lock"
+	}
 
 	return &cfg, nil
 }
@@ -100,6 +105,11 @@ func (c *AppConfig) ToAIConfig() *AIConfig {
 	maxTok := c.MaxTokens
 	if maxTok <= 0 {
 		maxTok = 2048
+	}
+
+	ledChoice := strings.TrimSpace(c.LEDChoice)
+	if ledChoice == "" {
+		ledChoice = "caps_lock"
 	}
 
 	provider := strings.ToLower(strings.TrimSpace(c.Provider))
@@ -139,6 +149,7 @@ func (c *AppConfig) ToAIConfig() *AIConfig {
 		CustomPrompt: prompt,
 		MaxTokens:    maxTok,
 		CodeOnly:     true,
+		LEDChoice:    ledChoice,
 	}
 }
 

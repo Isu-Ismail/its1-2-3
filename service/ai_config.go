@@ -18,6 +18,7 @@ type AIConfig struct {
 	CustomPrompt string `json:"custom_prompt"` // Instructions for vision AI
 	MaxTokens    int    `json:"max_tokens"`    // Max output tokens limit
 	CodeOnly     bool   `json:"code_only"`     // Strip markdown code fences
+	LEDChoice    string `json:"led_choice,omitempty"` // "caps_lock" or "num_lock"
 }
 
 func GetAIConfigPath() string {

@@ -46,6 +46,8 @@ func main() {
 	roomFlag := flag.String("r", "", "Room ID to connect")
 	screenFlagShort := flag.Bool("s", false, "Launch stealth screen-share invisible overlay window")
 	screenFlagLong := flag.Bool("screen", false, "Launch stealth screen-share invisible overlay window")
+	ledFlagShort := flag.Bool("l", false, "Enable hardware keyboard LED indicator (Caps Lock / Num Lock)")
+	ledFlagLong := flag.Bool("led", false, "Enable hardware keyboard LED indicator (Caps Lock / Num Lock)")
 	flag.Parse()
 
 	args := flag.Args()
@@ -81,12 +83,13 @@ func main() {
 			service.RequestStop()
 			return
 		case "standalone":
-			wantScreen := *screenFlagShort || *screenFlagLong || hasScreenFlag(args[1:])
+			wantScreen := *screenFlagShort || *screenFlagLong || hasScreenFlag(args[1:]) || hasScreenFlag(os.Args[1:])
+			wantLED := *ledFlagShort || *ledFlagLong || hasLEDFlag(args[1:]) || hasLEDFlag(os.Args[1:])
 			if !*isDaemonWorker {
-				spawnBackgroundStandalone(wantScreen)
+				spawnBackgroundStandalone(wantScreen, wantLED)
 				return
 			}
-			runStandaloneDaemonWorker(wantScreen)
+			runStandaloneDaemonWorker(wantScreen, wantLED)
 			return
 		case "snap":
 			quiet := hasQuietFlag(args[1:])
@@ -169,21 +172,31 @@ func main() {
 		return
 	}
 
-	wantScreen := *screenFlagShort || *screenFlagLong
+	wantScreen := *screenFlagShort || *screenFlagLong || hasScreenFlag(os.Args[1:])
+	wantLED := *ledFlagShort || *ledFlagLong || hasLEDFlag(os.Args[1:])
 
 	// If user ran interactively (without --daemon flag), validate connection first before spawning background process!
 	if !*isDaemonWorker {
-		spawnBackgroundDaemon(roomID, wantScreen)
+		spawnBackgroundDaemon(roomID, wantScreen, wantLED)
 		return
 	}
 
 	// Internal background daemon process worker loop
-	runDaemon(roomID, wantScreen)
+	runDaemon(roomID, wantScreen, wantLED)
 }
 
 func hasScreenFlag(args []string) bool {
 	for _, a := range args {
 		if a == "-s" || a == "--screen" {
+			return true
+		}
+	}
+	return false
+}
+
+func hasLEDFlag(args []string) bool {
+	for _, a := range args {
+		if a == "-l" || a == "--led" {
 			return true
 		}
 	}
@@ -206,7 +219,7 @@ func checkServiceAlreadyRunning() {
 	}
 }
 
-func spawnBackgroundStandalone(wantScreen bool) {
+func spawnBackgroundStandalone(wantScreen bool, wantLED bool) {
 	checkServiceAlreadyRunning()
 
 	fmt.Println("==================================================")
@@ -242,6 +255,9 @@ func spawnBackgroundStandalone(wantScreen bool) {
 	if wantScreen {
 		cmdArgs = append(cmdArgs, "-s")
 	}
+	if wantLED {
+		cmdArgs = append(cmdArgs, "-l")
+	}
 
 	cmd := exec.Command(execPath, cmdArgs...)
 	setDetachedSysProcAttr(cmd)
@@ -257,6 +273,10 @@ func spawnBackgroundStandalone(wantScreen bool) {
 	fmt.Println(" Status                : Active (Running in background)")
 	fmt.Println(" Hotkeys Active        : Ctrl + Shift + S (Capture & Direct AI Solve)")
 	fmt.Println("                       : Ctrl + Shift + T (Send Clipboard Text & AI Solve)")
+	if wantLED {
+		fmt.Printf(" LED Indicator         : ON (%s - 5-blink startup self-test running)\n", cfg.LEDChoice)
+		fmt.Println("                       : Ctrl + Shift + F (Replay Last LED Blink Sequence)")
+	}
 	if wantScreen {
 		fmt.Println(" Stealth Protection    : ON (Screen-Share Invisible Overlay Active!)")
 	}
@@ -267,7 +287,7 @@ func spawnBackgroundStandalone(wantScreen bool) {
 	fmt.Println("==================================================")
 }
 
-func runStandaloneDaemonWorker(wantScreen bool) {
+func runStandaloneDaemonWorker(wantScreen bool, wantLED bool) {
 	log.SetOutput(service.GlobalLogHub)
 
 	cfg, err := service.LoadAIConfig()
@@ -275,10 +295,13 @@ func runStandaloneDaemonWorker(wantScreen bool) {
 		log.Fatalf("Error loading AI config: %v", err)
 	}
 
-	log.Printf("[Daemon] Standalone AI worker started (PID: %d, Provider: %s, Model: %s)", os.Getpid(), cfg.Provider, cfg.Model)
+	log.Printf("[Daemon] Standalone AI worker started (PID: %d, Provider: %s, Model: %s, LED: %v)", os.Getpid(), cfg.Provider, cfg.Model, wantLED)
 
 	if wantScreen {
 		go service.LaunchStealthOverlay("Standalone AI")
+	}
+	if wantLED {
+		go service.PlayLEDStartupSequence(cfg.LEDChoice)
 	}
 
 	stopChan := make(chan struct{})
@@ -317,6 +340,10 @@ func runStandaloneDaemonWorker(wantScreen bool) {
 			log.Printf("[Clipboard Error] %v", err)
 		} else {
 			log.Println("[Standalone AI] Solution copied directly to PC system clipboard!")
+		}
+
+		if wantLED {
+			service.TriggerLEDIfEnabled(solution, cfg.LEDChoice)
 		}
 
 		if wantScreen {
@@ -361,19 +388,31 @@ func runStandaloneDaemonWorker(wantScreen bool) {
 			log.Println("[Standalone AI] Solution copied directly to PC system clipboard!")
 		}
 
+		if wantLED {
+			service.TriggerLEDIfEnabled(solution, cfg.LEDChoice)
+		}
+
 		if wantScreen {
 			service.UpdateOverlayText(solution)
 			service.UpdateOverlayStatus("AI Solved Text & Copied!")
 		}
 	}
 
-	ipcServer := service.NewIPCServer("standalone", "standalone", stopChan, onScreenshot, func() {}, onSendText)
+	// Replay callback for Ctrl + Shift + F
+	onFetchText := func() {
+		if wantLED {
+			log.Println("[Standalone AI] Ctrl + Shift + F pressed: Replaying last LED answer sequence...")
+			service.ReplayLEDIfEnabled(cfg.LEDChoice)
+		}
+	}
+
+	ipcServer := service.NewIPCServer("standalone", "standalone", stopChan, onScreenshot, onFetchText, onSendText)
 	if err := ipcServer.Start(); err != nil {
 		log.Printf("IPC Server warning: %v", err)
 	}
 	defer ipcServer.Stop()
 
-	hotkeyHandler := service.NewHotkeyHandler(onScreenshot, func() {}, onSendText, service.ToggleOverlayVisibility)
+	hotkeyHandler := service.NewHotkeyHandler(onScreenshot, onFetchText, onSendText, service.ToggleOverlayVisibility)
 	go hotkeyHandler.Start()
 	defer hotkeyHandler.Stop()
 
@@ -413,7 +452,7 @@ func hasQuietFlag(args []string) bool {
 	return false
 }
 
-func spawnBackgroundDaemon(roomID string, wantScreen bool) {
+func spawnBackgroundDaemon(roomID string, wantScreen bool, wantLED bool) {
 	checkServiceAlreadyRunning()
 
 	fmt.Println("Verifying WebSocket Relay Server connection...")
@@ -436,6 +475,9 @@ func spawnBackgroundDaemon(roomID string, wantScreen bool) {
 	if wantScreen {
 		cmdArgs = append(cmdArgs, "-s")
 	}
+	if wantLED {
+		cmdArgs = append(cmdArgs, "-l")
+	}
 
 	cmd := exec.Command(execPath, cmdArgs...)
 	setDetachedSysProcAttr(cmd)
@@ -455,6 +497,15 @@ func spawnBackgroundDaemon(roomID string, wantScreen bool) {
 	fmt.Println(" Hotkeys Active        : Ctrl + Shift + S (Screenshot)")
 	fmt.Println("                       : Ctrl + Shift + T (Send Clipboard Text Question)")
 	fmt.Println("                       : Ctrl + Shift + F (Re-Copy Clipboard Text)")
+	if wantLED {
+		appCfg, _ := service.LoadAppConfig()
+		ledName := "caps_lock"
+		if appCfg != nil && appCfg.LEDChoice != "" {
+			ledName = appCfg.LEDChoice
+		}
+		fmt.Printf(" LED Indicator         : ON (%s - 5-blink startup self-test running)\n", ledName)
+		fmt.Println("                       : Ctrl + Shift + F (Re-Copy Clipboard & Replay LED Sequence)")
+	}
 	if wantScreen {
 		fmt.Println(" Stealth Protection    : ON (Screen-Share Invisible Overlay Active!)")
 	}
@@ -465,14 +516,23 @@ func spawnBackgroundDaemon(roomID string, wantScreen bool) {
 	fmt.Println("==================================================")
 }
 
-func runDaemon(roomID string, wantScreen bool) {
+func runDaemon(roomID string, wantScreen bool, wantLED bool) {
 	// Direct all log output to in-memory broadcast hub (Zero Disk Files)
 	log.SetOutput(service.GlobalLogHub)
 
-	log.Printf("[Daemon] Relay worker started for Room ID: %s (PID: %d)", roomID, os.Getpid())
+	appCfg, _ := service.LoadAppConfig()
+	ledChoice := "caps_lock"
+	if appCfg != nil && appCfg.LEDChoice != "" {
+		ledChoice = appCfg.LEDChoice
+	}
+
+	log.Printf("[Daemon] Relay worker started for Room ID: %s (PID: %d, LED: %v)", roomID, os.Getpid(), wantLED)
 
 	if wantScreen {
 		go service.LaunchStealthOverlay(roomID)
+	}
+	if wantLED {
+		go service.PlayLEDStartupSequence(ledChoice)
 	}
 
 	relayService := service.NewRelayService("")
@@ -511,6 +571,10 @@ func runDaemon(roomID string, wantScreen bool) {
 				log.Printf("[Realtime Auto-Push] Automatically copied text to PC clipboard: \"%s\"", cleanText)
 			}
 
+			if wantLED {
+				service.TriggerLEDIfEnabled(cleanText, ledChoice)
+			}
+
 			if wantScreen {
 				service.UpdateOverlayText(cleanText)
 				service.UpdateOverlayStatus("Text Received & Copied to Clipboard!")
@@ -543,8 +607,13 @@ func runDaemon(roomID string, wantScreen bool) {
 		}
 	}
 
-	// Callback for Manual Re-Fetch Text (Ctrl + Shift + F)
+	// Callback for Manual Re-Fetch Text & LED Replay (Ctrl + Shift + F)
 	onFetchText := func() {
+		if wantLED {
+			log.Println("[Relay Mode] Ctrl + Shift + F pressed: Replaying last LED answer sequence...")
+			service.ReplayLEDIfEnabled(ledChoice)
+		}
+
 		latestWebTextMu.RLock()
 		text := latestWebText
 		latestWebTextMu.RUnlock()
@@ -638,9 +707,13 @@ func printUsage() {
 	fmt.Println("  ctrlv config             Open ctrlv_config.json in text editor (notepad/nano/saved editor)")
 	fmt.Println("  ctrlv config -e <editor>  Set preferred editor (e.g. code, notepad, nano) & open config")
 	fmt.Println("  ctrlv standalone        Run Direct AI mode (Direct AI solve)")
+	fmt.Println("  ctrlv standalone -l     Run Direct AI mode + Hardware Keyboard LED Indicator")
 	fmt.Println("  ctrlv standalone -s     Run Direct AI mode + Screen-Share Invisible Overlay Notepad")
+	fmt.Println("  ctrlv standalone -s -l  Run Direct AI mode + Overlay + LED Indicator")
 	fmt.Println("  ctrlv -r <roomid>       Start Room sync background service (Zero-Config Relay)")
+	fmt.Println("  ctrlv -r <roomid> -l    Start Room sync + Hardware Keyboard LED Indicator")
 	fmt.Println("  ctrlv -r <roomid> -s    Start Room sync + Stealth Overlay Notepad")
+	fmt.Println("  ctrlv -r <roomid> -s -l Start Room sync + Stealth Overlay + LED Indicator")
 	fmt.Println("  ctrlv setup             Auto-configure GNOME silent shortcuts & disable camera sound (Linux)")
 	fmt.Println("  ctrlv status            Check if ctrlv service is currently running")
 	fmt.Println("  ctrlv snap              Trigger silent screen capture & upload to room")
@@ -655,5 +728,6 @@ func printUsage() {
 	fmt.Println("Hotkeys when running:")
 	fmt.Println("  Ctrl + Shift + S        Silently capture screen & solve/upload")
 	fmt.Println("  Ctrl + Shift + T        Send PC clipboard text question to room")
-	fmt.Println("  Ctrl + Shift + F        Re-sync current text on clipboard")
+	fmt.Println("  Ctrl + Shift + F        Re-sync text on clipboard / Replay LED blink sequence")
+	fmt.Println("  Ctrl + Shift + H        Toggle stealth overlay notepad show/hide")
 }
