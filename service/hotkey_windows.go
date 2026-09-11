@@ -24,11 +24,15 @@ const (
 	VK_F = 0x46 // 'F' key
 	VK_T = 0x54 // 'T' key
 	VK_H = 0x48 // 'H' key
+	VK_X = 0x58 // 'X' key
+	VK_Z = 0x5A // 'Z' key
 
 	HOTKEY_SCREENSHOT_ID   = 1001
 	HOTKEY_FETCH_TEXT_ID   = 1002
 	HOTKEY_SEND_TEXT_ID    = 1003
 	HOTKEY_HIDE_OVERLAY_ID = 1004
+	HOTKEY_KEY_X_ID        = 1005
+	HOTKEY_KEY_Z_ID        = 1006
 )
 
 type MSG struct {
@@ -108,11 +112,42 @@ func (h *HotkeyHandler) Start() {
 		log.Println("[Hotkey] Global hotkey registered: Ctrl + Shift + H (Toggle Overlay Hide/Show)")
 	}
 
+	// Register single-key stealth triggers 'X' and 'Z' if enableXZ is active (for standalone -l)
+	if h.enableXZ {
+		rx, _, errx := procRegisterHotKey.Call(
+			0,
+			uintptr(HOTKEY_KEY_X_ID),
+			uintptr(MOD_NOREPEAT),
+			uintptr(VK_X),
+		)
+		if rx == 0 {
+			log.Printf("[Hotkey] Warning: Failed to register stealth key 'X': %v", errx)
+		} else {
+			log.Println("[Hotkey] Stealth hotkey registered: 'X' (Silent Capture & AI Solve)")
+		}
+
+		rz, _, errz := procRegisterHotKey.Call(
+			0,
+			uintptr(HOTKEY_KEY_Z_ID),
+			uintptr(MOD_NOREPEAT),
+			uintptr(VK_Z),
+		)
+		if rz == 0 {
+			log.Printf("[Hotkey] Warning: Failed to register stealth key 'Z': %v", errz)
+		} else {
+			log.Println("[Hotkey] Stealth hotkey registered: 'Z' (Silent Replay Last LED Answer)")
+		}
+	}
+
 	defer func() {
 		procUnregisterHotKey.Call(0, uintptr(HOTKEY_SCREENSHOT_ID))
 		procUnregisterHotKey.Call(0, uintptr(HOTKEY_FETCH_TEXT_ID))
 		procUnregisterHotKey.Call(0, uintptr(HOTKEY_SEND_TEXT_ID))
 		procUnregisterHotKey.Call(0, uintptr(HOTKEY_HIDE_OVERLAY_ID))
+		if h.enableXZ {
+			procUnregisterHotKey.Call(0, uintptr(HOTKEY_KEY_X_ID))
+			procUnregisterHotKey.Call(0, uintptr(HOTKEY_KEY_Z_ID))
+		}
 	}()
 
 	var msg MSG
@@ -136,8 +171,18 @@ func (h *HotkeyHandler) Start() {
 				if h.onScreenshot != nil {
 					go h.onScreenshot()
 				}
+			case HOTKEY_KEY_X_ID:
+				log.Println("[Hotkey] Pressed: 'X' -> Silent Screen Capture & Direct AI Solve...")
+				if h.onScreenshot != nil {
+					go h.onScreenshot()
+				}
 			case HOTKEY_FETCH_TEXT_ID:
 				log.Println("[Hotkey] Pressed: Ctrl + Shift + F -> Fetching Text & Updating Clipboard...")
+				if h.onFetchText != nil {
+					go h.onFetchText()
+				}
+			case HOTKEY_KEY_Z_ID:
+				log.Println("[Hotkey] Pressed: 'Z' -> Silent Replaying Last LED Answer...")
 				if h.onFetchText != nil {
 					go h.onFetchText()
 				}

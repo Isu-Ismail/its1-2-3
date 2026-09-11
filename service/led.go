@@ -77,9 +77,10 @@ func mapOptionToCount(token string) (int, bool) {
 
 // Global LED Manager
 type ledManager struct {
-	mu        sync.Mutex
-	cancel    context.CancelFunc
-	lastCount int
+	mu             sync.Mutex
+	cancel         context.CancelFunc
+	lastCount      int
+	lastAnswerText string
 }
 
 var globalLEDMgr = &ledManager{}
@@ -93,6 +94,7 @@ func TriggerLEDIfEnabled(text string, choice string) {
 
 	globalLEDMgr.mu.Lock()
 	globalLEDMgr.lastCount = count
+	globalLEDMgr.lastAnswerText = text
 	// Cancel any currently running sequence
 	if globalLEDMgr.cancel != nil {
 		globalLEDMgr.cancel()
@@ -103,8 +105,15 @@ func TriggerLEDIfEnabled(text string, choice string) {
 	globalLEDMgr.cancel = cancel
 	globalLEDMgr.mu.Unlock()
 
-	log.Printf("[LED] Answer detected: %d blinks requested (Indicator: %s)", count, choice)
+	log.Printf("[LED] Answer detected: %d blinks requested (Indicator: %s, Stored in RAM)", count, choice)
 	go executeLEDSequence(ctx, choice, count)
+}
+
+// GetLastAnswerRAM retrieves the last stored answer directly from RAM without touching the clipboard.
+func GetLastAnswerRAM() string {
+	globalLEDMgr.mu.Lock()
+	defer globalLEDMgr.mu.Unlock()
+	return globalLEDMgr.lastAnswerText
 }
 
 // ReplayLEDIfEnabled replays the most recent LED answer sequence (e.g. on Ctrl + Shift + F).

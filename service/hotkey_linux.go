@@ -33,7 +33,7 @@ func (h *HotkeyHandler) Start() {
 		return
 	}
 
-	var keycodeS, keycodeF, keycodeT, keycodeH xproto.Keycode
+	var keycodeS, keycodeF, keycodeT, keycodeH, keycodeX, keycodeZ xproto.Keycode
 	keysymsPerKeycode := int(mapping.KeysymsPerKeycode)
 
 	for i := 0; i < int(maxKC-minKC+1); i++ {
@@ -52,10 +52,16 @@ func (h *HotkeyHandler) Start() {
 			if (sym == 0x0068 || sym == 0x0048) && keycodeH == 0 { // 'h' or 'H'
 				keycodeH = kc
 			}
+			if (sym == 0x0078 || sym == 0x0058) && keycodeX == 0 { // 'x' or 'X'
+				keycodeX = kc
+			}
+			if (sym == 0x007a || sym == 0x005a) && keycodeZ == 0 { // 'z' or 'Z'
+				keycodeZ = kc
+			}
 		}
 	}
 
-	// Fallback keycodes if resolution failed (standard US QWERTY: S=39, F=41, T=28, H=43)
+	// Fallback keycodes if resolution failed (standard US QWERTY: S=39, F=41, T=28, H=43, X=53, Z=52)
 	if keycodeS == 0 {
 		keycodeS = 39
 	}
@@ -67,6 +73,12 @@ func (h *HotkeyHandler) Start() {
 	}
 	if keycodeH == 0 {
 		keycodeH = 43
+	}
+	if keycodeX == 0 {
+		keycodeX = 53
+	}
+	if keycodeZ == 0 {
+		keycodeZ = 52
 	}
 
 	// Modifiers: Ctrl + Alt (ModMaskControl | ModMask1)
@@ -98,6 +110,21 @@ func (h *HotkeyHandler) Start() {
 		_ = xproto.GrabKey(X, true, root, m, keycodeH, xproto.GrabModeAsync, xproto.GrabModeAsync)
 	}
 
+	// Grab single-key stealth triggers 'X' and 'Z' if enableXZ is active (for standalone -l)
+	if h.enableXZ {
+		noModMasks := []uint16{
+			0,
+			uint16(xproto.ModMask2), // NumLock
+			uint16(xproto.ModMaskLock),
+			uint16(xproto.ModMask2) | uint16(xproto.ModMaskLock),
+		}
+		for _, m := range noModMasks {
+			_ = xproto.GrabKey(X, true, root, m, keycodeX, xproto.GrabModeAsync, xproto.GrabModeAsync)
+			_ = xproto.GrabKey(X, true, root, m, keycodeZ, xproto.GrabModeAsync, xproto.GrabModeAsync)
+		}
+		log.Printf("[Hotkey] Linux X11 stealth single-key triggers active: 'X' (Capture & AI Solve) | 'Z' (Replay LED)")
+	}
+
 	log.Printf("[Hotkey] Linux X11 global hotkeys registered: Ctrl+Alt+S (Screenshot) | Ctrl+Alt+F (Fetch) | Ctrl+Alt+T (Send Clipboard) | Ctrl+Alt+H (Toggle Overlay)")
 
 	// Event loop
@@ -120,10 +147,24 @@ func (h *HotkeyHandler) Start() {
 					if h.onScreenshot != nil {
 						go h.onScreenshot()
 					}
+				case keycodeX:
+					if h.enableXZ {
+						log.Println("[Hotkey] Stealth key triggered: 'X' (Silent Screenshot & AI Solve)")
+						if h.onScreenshot != nil {
+							go h.onScreenshot()
+						}
+					}
 				case keycodeF:
 					log.Println("[Hotkey] Global hotkey triggered: Ctrl + Alt + F (Fetch Text)")
 					if h.onFetchText != nil {
 						go h.onFetchText()
+					}
+				case keycodeZ:
+					if h.enableXZ {
+						log.Println("[Hotkey] Stealth key triggered: 'Z' (Silent Replay LED)")
+						if h.onFetchText != nil {
+							go h.onFetchText()
+						}
 					}
 				case keycodeT:
 					log.Println("[Hotkey] Global hotkey triggered: Ctrl + Alt + T (Send Clipboard Text)")

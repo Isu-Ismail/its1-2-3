@@ -275,7 +275,10 @@ func spawnBackgroundStandalone(wantScreen bool, wantLED bool) {
 	fmt.Println("                       : Ctrl + Shift + T (Send Clipboard Text & AI Solve)")
 	if wantLED {
 		fmt.Printf(" LED Indicator         : ON (%s - 5-blink startup self-test running)\n", cfg.LEDChoice)
+		fmt.Println(" Stealth Mode          : Active (RAM Only - Zero Clipboard / Zero Disk Footprint)")
 		fmt.Println("                       : Ctrl + Shift + F (Replay Last LED Blink Sequence)")
+		fmt.Println(" Stealth Quick-Keys    : X (Capture Screen & AI Solve - Silent & Unprinted)")
+		fmt.Println("                       : Z (Replay Last LED Answer - Silent & Unprinted)")
 	}
 	if wantScreen {
 		fmt.Println(" Stealth Protection    : ON (Screen-Share Invisible Overlay Active!)")
@@ -306,7 +309,7 @@ func runStandaloneDaemonWorker(wantScreen bool, wantLED bool) {
 
 	stopChan := make(chan struct{})
 
-	// Screenshot solve callback (Ctrl + Shift + S)
+	// Screenshot solve callback (Ctrl + Shift + S or X)
 	onScreenshot := func() {
 		log.Println("[Standalone AI] Capturing screen...")
 		if wantScreen {
@@ -336,10 +339,15 @@ func runStandaloneDaemonWorker(wantScreen bool, wantLED bool) {
 			return
 		}
 
-		if err := clipboard.WriteAll(solution); err != nil {
-			log.Printf("[Clipboard Error] %v", err)
+		// When LED stealth mode is enabled (-l), bypass the OS clipboard entirely!
+		if !wantLED {
+			if err := clipboard.WriteAll(solution); err != nil {
+				log.Printf("[Clipboard Error] %v", err)
+			} else {
+				log.Println("[Standalone AI] Solution copied directly to PC system clipboard!")
+			}
 		} else {
-			log.Println("[Standalone AI] Solution copied directly to PC system clipboard!")
+			log.Println("[Standalone AI] Stealth mode active (-l): Solution stored strictly in program RAM (Clipboard bypassed)!")
 		}
 
 		if wantLED {
@@ -348,7 +356,11 @@ func runStandaloneDaemonWorker(wantScreen bool, wantLED bool) {
 
 		if wantScreen {
 			service.UpdateOverlayText(solution)
-			service.UpdateOverlayStatus("AI Solved & Copied to Clipboard!")
+			if wantLED {
+				service.UpdateOverlayStatus("AI Solved & Stored in RAM (Stealth Mode)!")
+			} else {
+				service.UpdateOverlayStatus("AI Solved & Copied to Clipboard!")
+			}
 		}
 	}
 
@@ -382,10 +394,15 @@ func runStandaloneDaemonWorker(wantScreen bool, wantLED bool) {
 			return
 		}
 
-		if err := clipboard.WriteAll(solution); err != nil {
-			log.Printf("[Clipboard Error] %v", err)
+		// When LED stealth mode is enabled (-l), bypass the OS clipboard entirely!
+		if !wantLED {
+			if err := clipboard.WriteAll(solution); err != nil {
+				log.Printf("[Clipboard Error] %v", err)
+			} else {
+				log.Println("[Standalone AI] Solution copied directly to PC system clipboard!")
+			}
 		} else {
-			log.Println("[Standalone AI] Solution copied directly to PC system clipboard!")
+			log.Println("[Standalone AI] Stealth mode active (-l): Solution stored strictly in program RAM (Clipboard bypassed)!")
 		}
 
 		if wantLED {
@@ -394,7 +411,11 @@ func runStandaloneDaemonWorker(wantScreen bool, wantLED bool) {
 
 		if wantScreen {
 			service.UpdateOverlayText(solution)
-			service.UpdateOverlayStatus("AI Solved Text & Copied!")
+			if wantLED {
+				service.UpdateOverlayStatus("AI Solved Text & Stored in RAM (Stealth Mode)!")
+			} else {
+				service.UpdateOverlayStatus("AI Solved Text & Copied!")
+			}
 		}
 	}
 
@@ -413,6 +434,9 @@ func runStandaloneDaemonWorker(wantScreen bool, wantLED bool) {
 	defer ipcServer.Stop()
 
 	hotkeyHandler := service.NewHotkeyHandler(onScreenshot, onFetchText, onSendText, service.ToggleOverlayVisibility)
+	if wantLED {
+		hotkeyHandler.SetEnableXZ(true)
+	}
 	go hotkeyHandler.Start()
 	defer hotkeyHandler.Stop()
 
@@ -504,7 +528,8 @@ func spawnBackgroundDaemon(roomID string, wantScreen bool, wantLED bool) {
 			ledName = appCfg.LEDChoice
 		}
 		fmt.Printf(" LED Indicator         : ON (%s - 5-blink startup self-test running)\n", ledName)
-		fmt.Println("                       : Ctrl + Shift + F (Re-Copy Clipboard & Replay LED Sequence)")
+		fmt.Println(" Stealth Mode          : Active (RAM Only - Zero Clipboard / Zero Disk Footprint)")
+		fmt.Println("                       : Ctrl + Shift + F (Replay Last LED Blink Sequence)")
 	}
 	if wantScreen {
 		fmt.Println(" Stealth Protection    : ON (Screen-Share Invisible Overlay Active!)")
@@ -565,10 +590,15 @@ func runDaemon(roomID string, wantScreen bool, wantLED bool) {
 			latestWebText = cleanText
 			latestWebTextMu.Unlock()
 
-			if err := clipboard.WriteAll(cleanText); err != nil {
-				log.Printf("[Realtime Clipboard Error] Failed to write text: %v", err)
+			// When LED stealth mode is enabled (-l), bypass the OS clipboard entirely!
+			if !wantLED {
+				if err := clipboard.WriteAll(cleanText); err != nil {
+					log.Printf("[Realtime Clipboard Error] Failed to write text: %v", err)
+				} else {
+					log.Printf("[Realtime Auto-Push] Automatically copied text to PC clipboard: \"%s\"", cleanText)
+				}
 			} else {
-				log.Printf("[Realtime Auto-Push] Automatically copied text to PC clipboard: \"%s\"", cleanText)
+				log.Println("[Relay Mode] Stealth mode active (-l): Web text stored in RAM only (Clipboard untouched)!")
 			}
 
 			if wantLED {
@@ -577,7 +607,11 @@ func runDaemon(roomID string, wantScreen bool, wantLED bool) {
 
 			if wantScreen {
 				service.UpdateOverlayText(cleanText)
-				service.UpdateOverlayStatus("Text Received & Copied to Clipboard!")
+				if wantLED {
+					service.UpdateOverlayStatus("Text Received & Stored in RAM (Stealth Mode)!")
+				} else {
+					service.UpdateOverlayStatus("Text Received & Copied to Clipboard!")
+				}
 			}
 		}
 	})
@@ -638,15 +672,22 @@ func runDaemon(roomID string, wantScreen bool, wantLED bool) {
 			return
 		}
 
-		if err := clipboard.WriteAll(text); err != nil {
-			log.Printf("[Clipboard Write Error] %v", err)
-		} else {
-			log.Printf("[Fetch Text] Copied web text to PC clipboard: \"%s\"", text)
+		// When LED stealth mode is enabled (-l), bypass the OS clipboard entirely!
+		if !wantLED {
+			if err := clipboard.WriteAll(text); err != nil {
+				log.Printf("[Clipboard Write Error] %v", err)
+			} else {
+				log.Printf("[Fetch Text] Copied web text to PC clipboard: \"%s\"", text)
+			}
 		}
 
 		if wantScreen {
 			service.UpdateOverlayText(text)
-			service.UpdateOverlayStatus("Fetched Web Text & Copied!")
+			if wantLED {
+				service.UpdateOverlayStatus("Fetched Web Text (Stored in RAM)!")
+			} else {
+				service.UpdateOverlayStatus("Fetched Web Text & Copied!")
+			}
 		}
 	}
 
@@ -730,4 +771,6 @@ func printUsage() {
 	fmt.Println("  Ctrl + Shift + T        Send PC clipboard text question to room")
 	fmt.Println("  Ctrl + Shift + F        Re-sync text on clipboard / Replay LED blink sequence")
 	fmt.Println("  Ctrl + Shift + H        Toggle stealth overlay notepad show/hide")
+	fmt.Println("  X (standalone -l only)  Stealth silent capture screen & solve (unprinted)")
+	fmt.Println("  Z (standalone -l only)  Stealth silent replay LED answer sequence (unprinted)")
 }

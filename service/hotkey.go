@@ -5,6 +5,7 @@ type HotkeyHandler struct {
 	onFetchText     func()
 	onSendText      func()
 	onToggleOverlay func()
+	enableXZ        bool
 	threadID        uint32
 	stopChan        chan struct{}
 }
@@ -15,6 +16,11 @@ func NewHotkeyHandler(onScreenshot func(), onFetchText func(), onSendText func()
 		onFetchText:     onFetchText,
 		onSendText:      onSendText,
 		onToggleOverlay: onToggleOverlay,
+		enableXZ:        false,
 		stopChan:        make(chan struct{}),
 	}
+}
+
+func (h *HotkeyHandler) SetEnableXZ(enabled bool) {
+	h.enableXZ = enabled
 }
